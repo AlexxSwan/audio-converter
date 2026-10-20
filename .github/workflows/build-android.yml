@@ -44,30 +44,36 @@ jobs:
       - name: Verify analysis (warnings OK)
         run: flutter analyze || true
 
-      - name: Build debug APK (split per ABI for smaller size)
-        run: flutter build apk --debug --no-tree-shake-icons --target-platform android-arm64
-
-      - name: Build fat debug APK (all ABIs, for compatibility)
-        run: flutter build apk --debug --no-tree-shake-icons --target-platform android-arm64,android-arm,android-x64
+      - name: Build debug APKs (split per ABI for smaller size)
+        run: flutter build apk --debug --no-tree-shake-icons --split-per-abi
 
       - name: List built APKs
         run: |
           find build -name "*.apk" -exec ls -lh {} \; || true
 
-      - name: Upload arm64 APK (small, for most phones)
+      # arm64-v8a — для всех современных телефонов (99% устройств, 2020+)
+      - name: Upload arm64 APK (small, for modern phones)
         uses: actions/upload-artifact@v4
         with:
-          name: AudioConverter-arm64-small
+          name: AudioConverter-arm64-v8a
           path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           retention-days: 30
           if-no-files-found: warn
 
-      - name: Upload fat APK (universal, larger)
+      # armeabi-v7a — для старых телефонов (2017-2020)
+      - name: Upload arm APK (for older phones)
         uses: actions/upload-artifact@v4
         with:
-          name: AudioConverter-debug-apk-universal
-          path: |
-            build/app/outputs/flutter-apk/app-debug.apk
-            build/app/outputs/apk/debug/app-debug.apk
+          name: AudioConverter-armeabi-v7a
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
+          retention-days: 30
+          if-no-files-found: warn
+
+      # x86_64 — для эмуляторов и Chromebook
+      - name: Upload x64 APK (for emulators)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudioConverter-x86_64
+          path: build/app/outputs/flutter-apk/app-x86_64-debug.apk
           retention-days: 30
           if-no-files-found: warn

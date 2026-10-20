@@ -10,9 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # ffmpeg для Android — только аудио-кодеки (MP3, AAC, FLAC, WAV, Opus, Vorbis).
-  # Используем audio-сборку вместо полной — это уменьшает размер APK в 2-3 раза.
-  ffmpeg_kit_flutter_audio: ^6.0.3
+  # ffmpeg для Android — основная функциональность конвертации.
+  # Используем ffmpeg_kit_flutter_new (4.6.7) — она содержит все нативные
+  # библиотеки прямо в плагине, не требует загрузки из Maven Central.
+  ffmpeg_kit_flutter_new: ^4.6.7
   # Выбор файлов через системный диалог
   file_picker: ^6.1.1
   # Доступ к папкам приложения
