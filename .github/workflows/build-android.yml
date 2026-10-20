@@ -44,17 +44,28 @@ jobs:
       - name: Verify analysis (warnings OK)
         run: flutter analyze || true
 
-      - name: Build debug APK
-        run: flutter build apk --debug --no-tree-shake-icons
+      - name: Build debug APK (split per ABI for smaller size)
+        run: flutter build apk --debug --no-tree-shake-icons --target-platform android-arm64
 
-      - name: List built APK
+      - name: Build fat debug APK (all ABIs, for compatibility)
+        run: flutter build apk --debug --no-tree-shake-icons --target-platform android-arm64,android-arm,android-x64
+
+      - name: List built APKs
         run: |
           find build -name "*.apk" -exec ls -lh {} \; || true
 
-      - name: Upload APK artifact
+      - name: Upload arm64 APK (small, for most phones)
         uses: actions/upload-artifact@v4
         with:
-          name: AudioConverter-debug-apk
+          name: AudioConverter-arm64-small
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload fat APK (universal, larger)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AudioConverter-debug-apk-universal
           path: |
             build/app/outputs/flutter-apk/app-debug.apk
             build/app/outputs/apk/debug/app-debug.apk

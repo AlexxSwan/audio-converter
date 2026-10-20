@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
-import 'package:ffmpeg_kit_flutter_new/statistics.dart';
-import 'package:ffmpeg_kit_flutter_new/media_information.dart';
-import 'package:ffmpeg_kit_flutter_new/media_information_session.dart';
+import 'package:ffmpeg_kit_flutter_audio/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_audio/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_audio/ffmpeg_session.dart';
+import 'package:ffmpeg_kit_flutter_audio/ffprobe_kit.dart';
+import 'package:ffmpeg_kit_flutter_audio/return_code.dart';
+import 'package:ffmpeg_kit_flutter_audio/statistics.dart';
+import 'package:ffmpeg_kit_flutter_audio/media_information.dart';
+import 'package:ffmpeg_kit_flutter_audio/media_information_session.dart';
 import '../models/task.dart';
 
 class ConverterService {
