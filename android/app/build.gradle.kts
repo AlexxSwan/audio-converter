@@ -9,6 +9,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Получаем версию Flutter из local.properties (до блока android)
+val flutterVersionCode: String by project
+val flutterVersionName: String by project
+
 android {
     namespace = "com.example.audio_converter"
     compileSdk = 35  // ЯВНО указано 35 — требует ffmpeg_kit_flutter_new
@@ -24,20 +28,15 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.audio_converter"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24  // ЯВНО указано 24 — требует ffmpeg_kit_flutter_new
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutterVersionCode.toInteger()
+        versionCode = flutterVersionCode.toInt()
         versionName = flutterVersionName
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -46,7 +45,3 @@ android {
 flutter {
     source = "../.."
 }
-
-// Получаем версию Flutter из local.properties
-val flutterVersionCode: String by project
-val flutterVersionName: String by project
