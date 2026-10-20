@@ -90,19 +90,20 @@ class ConverterService {
     // Строим аргументы
     final args = buildArgs(task);
 
-    int? sessionId;
-
-    // Запускаем ffmpeg с колбэком статистики прямо в executeAsync
+    // Запускаем ffmpeg с колбэком статистики прямо в executeAsync.
+    // executeAsync возвращает Future<FFmpegSession>, из которого можно
+    // получить sessionId для отмены.
     final completer = Completer<ConvertTask>();
     int lastPercent = 0;
+    FFmpegSession? session;
 
     FFmpegKit.executeAsync(
       args,
       // Завершение сессии
-      (session) async {
+      (FFmpegSession completedSession) async {
         if (completer.isCompleted) return;
 
-        final returnCode = await session.getReturnCode();
+        final returnCode = await completedSession.getReturnCode();
 
         // Проверяем отмену
         if (cancelToken.isCancelled) {
@@ -129,7 +130,7 @@ class ConverterService {
           task.progress = 100;
         } else {
           // Ошибка
-          final logs = await session.getLogs();
+          final logs = await completedSession.getLogs();
           final errorText = logs.map((l) => l.getMessage()).join('\n');
           final lines = errorText.split('\n');
           final tail = lines.length > 5
@@ -140,7 +141,7 @@ class ConverterService {
         }
         completer.complete(task);
       },
-      // Логи (не используем, но нужно для API)
+      // Логи (не используем)
       null,
       // Статистика — для прогресса
       (Statistics? stats) {
@@ -153,16 +154,15 @@ class ConverterService {
           onProgress(percent);
         }
       },
-    ).then((id) {
-      sessionId = id;
+    ).then((FFmpegSession s) {
+      session = s;
     });
 
-    // Ждём завершения конвертации
-    // Параллельно проверяем отмену каждые 200мс
+    // Ждём завершения конвертации, параллельно проверяя отмену каждые 200мс
     while (!completer.isCompleted) {
-      if (cancelToken.isCancelled && sessionId != null) {
-        await FFmpegKit.cancel(sessionId!);
-        // Не выходим из цикла — completer завершит сам в completion callback
+      if (cancelToken.isCancelled && session != null) {
+        final sid = await session!.getSessionId();
+        await FFmpegKit.cancel(sid);
       }
       await Future.delayed(const Duration(milliseconds: 200));
     }
