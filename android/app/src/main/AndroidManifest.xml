@@ -4,16 +4,13 @@
     <!-- Доступ к интернету (для ffmpeg_kit licensing) -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
-    <!-- Доступ к хранилищу (Android 12 и ниже) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29"/>
+    <!-- Доступ к хранилищу (для записи в общую папку Downloads) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <!-- Для Android 13+ — детальные разрешения -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
-
-    <!-- Запись в общую папку Downloads (для Android 10+ scoped storage) -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
         android:label="Audio Converter"
