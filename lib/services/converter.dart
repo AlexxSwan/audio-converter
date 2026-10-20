@@ -2,29 +2,26 @@ import 'dart:async';
 import 'dart:io';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit_config.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart';
+import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
 import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:ffmpeg_kit_flutter_new/statistics.dart';
-import 'package:path/path.dart' as p;
+import 'package:ffmpeg_kit_flutter_new/media_information.dart';
+import 'package:ffmpeg_kit_flutter_new/media_information_session.dart';
 import '../models/task.dart';
 
 class ConverterService {
-  /// Получить длительность аудио в секундах через ffprobe.
+  /// Получить длительность аудио в секундах через FFprobeKit.
   /// Возвращает null, если не удалось.
   static Future<double?> getDuration(String filePath) async {
     try {
-      // ffmpeg_kit_flutter_new предоставляет FFprobeKit
-      final session = await FFmpegKit.execute(
-        '-i "$filePath" -hide_banner -nostats',
-      );
-      // Не самый эффективный способ, но работающий
-      final logs = await session.getAllLogs();
-      final output = logs.map((l) => l.getMessage()).join('\n');
-      final match = RegExp(r'Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)').firstMatch(output);
-      if (match == null) return null;
-      final h = int.parse(match.group(1)!);
-      final m = int.parse(match.group(2)!);
-      final s = double.parse(match.group(3)!);
-      return h * 3600 + m * 60 + s;
+      final session = await FFprobeKit.getMediaInformation(filePath);
+      final info = await session.getMediaInformation();
+      if (info == null) return null;
+      final dur = info.getDuration();
+      if (dur == null) return null;
+      final d = double.tryParse(dur);
+      return d != null && d > 0 ? d : null;
     } catch (e) {
       return null;
     }
@@ -93,66 +90,82 @@ class ConverterService {
     // Строим аргументы
     final args = buildArgs(task);
 
-    // Создаём контроллер для отслеживания прогресса
+    int? sessionId;
+
+    // Запускаем ffmpeg с колбэком статистики прямо в executeAsync
     final completer = Completer<ConvertTask>();
     int lastPercent = 0;
 
-    // Подписываемся на статистику ffmpeg
-    FFmpegKitConfig.enableStatisticsCallback((statistics) {
-      if (duration != null && duration > 0 && !completer.isCompleted) {
-        // statistics.getTime() — текущая позиция в миллисекундах
-        final currentTime = statistics.getTime() / 1000.0;
+    FFmpegKit.executeAsync(
+      args,
+      // Завершение сессии
+      (session) async {
+        if (completer.isCompleted) return;
+
+        final returnCode = await session.getReturnCode();
+
+        // Проверяем отмену
+        if (cancelToken.isCancelled) {
+          // Удаляем недоконвертированный файл
+          try {
+            final f = File(task.outputPath);
+            if (await f.exists()) await f.delete();
+          } catch (_) {}
+          task.status = TaskStatus.cancelled;
+          task.progress = 0;
+          completer.complete(task);
+          return;
+        }
+
+        if (ReturnCode.isSuccess(returnCode)) {
+          // Успех
+          try {
+            final f = File(task.outputPath);
+            if (await f.exists()) {
+              task.outputSize = await f.length();
+            }
+          } catch (_) {}
+          task.status = TaskStatus.done;
+          task.progress = 100;
+        } else {
+          // Ошибка
+          final logs = await session.getLogs();
+          final errorText = logs.map((l) => l.getMessage()).join('\n');
+          final lines = errorText.split('\n');
+          final tail = lines.length > 5
+              ? lines.skip(lines.length - 5).join('\n')
+              : errorText;
+          task.status = TaskStatus.error;
+          task.errorMessage = tail.isNotEmpty ? tail : 'Неизвестная ошибка ffmpeg';
+        }
+        completer.complete(task);
+      },
+      // Логи (не используем, но нужно для API)
+      null,
+      // Статистика — для прогресса
+      (Statistics? stats) {
+        if (stats == null || duration == null || duration <= 0) return;
+        if (completer.isCompleted) return;
+        final currentTime = stats.getTime() / 1000.0;
         final percent = (currentTime / duration * 100).clamp(1, 99).toInt();
         if (percent > lastPercent) {
           lastPercent = percent;
           onProgress(percent);
         }
-      }
+      },
+    ).then((id) {
+      sessionId = id;
     });
 
-    // Запускаем ffmpeg
-    FFmpegKit.executeAsync(args, (session) async {
-      // Отписываемся от статистики
-      FFmpegKitConfig.enableStatisticsCallback(null);
-
-      if (completer.isCompleted) return;
-
-      final returnCode = await session.getReturnCode();
-      final output = task.outputPath;
-
-      // Проверяем отмену
-      if (cancelToken.isCancelled) {
-        // Удаляем недоконвертированный файл
-        try {
-          final f = File(output);
-          if (await f.exists()) await f.delete();
-        } catch (_) {}
-        task.status = TaskStatus.cancelled;
-        task.progress = 0;
-        completer.complete(task);
-        return;
+    // Ждём завершения конвертации
+    // Параллельно проверяем отмену каждые 200мс
+    while (!completer.isCompleted) {
+      if (cancelToken.isCancelled && sessionId != null) {
+        await FFmpegKit.cancel(sessionId!);
+        // Не выходим из цикла — completer завершит сам в completion callback
       }
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        // Успех
-        try {
-          final f = File(output);
-          if (await f.exists()) {
-            task.outputSize = await f.length();
-          }
-        } catch (_) {}
-        task.status = TaskStatus.done;
-        task.progress = 100;
-      } else {
-        // Ошибка
-        final logs = await session.getAllLogs();
-        final errorText = logs.map((l) => l.getMessage()).join('\n');
-        final tail = errorText.split('\n').skip(errorText.split('\n').length - 5).join('\n');
-        task.status = TaskStatus.error;
-        task.errorMessage = tail.isNotEmpty ? tail : 'Неизвестная ошибка ffmpeg';
-      }
-      completer.complete(task);
-    });
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
 
     return completer.future;
   }
