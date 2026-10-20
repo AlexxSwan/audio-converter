@@ -33,20 +33,75 @@ jobs:
           flutter --version
           dart --version
 
-      # Если в репозитории нет полной Android-структуры (build.gradle, settings.gradle,
-      # MainActivity.kt и т.д.) — сгенерируем её автоматически.
+      # Генерируем недостающие Android-файлы, если их нет
       - name: Generate Android project files
         run: flutter create . --project-name audio_converter --platforms android --org com.example
 
-      # ВАЖНО: повышаем compileSdkVersion до 35, чтобы избежать ошибок плагинов
-      - name: Patch Android build.gradle for SDK 35
+      # Патчим build.gradle через Python — надёжнее, чем sed.
+      # Принудительно ставим compileSdk=35, minSdk=24 (требование ffmpeg_kit).
+      - name: Patch Android build.gradle for SDK 35 + minSdk 24
         run: |
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle || true
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/g' android/app/build.gradle.kts || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle || true
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle.kts || true
-          echo "=== Patched build.gradle ==="
-          cat android/app/build.gradle || cat android/app/build.gradle.kts
+          python3 << 'EOF'
+          import re
+          import os
+          from pathlib import Path
+
+          # Найти build.gradle (может быть .gradle или .gradle.kts)
+          gradle_file = None
+          for p in [Path('android/app/build.gradle'), Path('android/app/build.gradle.kts')]:
+              if p.exists():
+                  gradle_file = p
+                  break
+
+          if gradle_file is None:
+              print("ERROR: android/app/build.gradle not found!")
+              print("Files in android/app/:")
+              for f in Path('android/app').iterdir():
+                  print(f"  {f}")
+              exit(1)
+
+          print(f"Patching: {gradle_file}")
+          content = gradle_file.read_text()
+          print(f"Original content (first 100 lines):")
+          for i, line in enumerate(content.splitlines()[:100]):
+              print(f"  {i+1}: {line}")
+
+          # Если это .kts (Kotlin DSL) — синтаксис: compileSdk = flutter.compileSdkVersion
+          is_kts = gradle_file.suffix == '.kts'
+
+          if is_kts:
+              # Kotlin DSL
+              content = re.sub(r'compileSdk\s*=\s*flutter\.compileSdkVersion',
+                              'compileSdk = 35', content)
+              content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion',
+                              'minSdk = 24', content)
+              # Если таких строк нет — добавим в defaultConfig
+              if 'compileSdk = 35' not in content:
+                  # Ищем android { ... } блок и добавляем
+                  content = re.sub(r'(android\s*\{)',
+                                  r'\1\n    compileSdk = 35', content, count=1)
+              if 'minSdk = 24' not in content:
+                  content = re.sub(r'(defaultConfig\s*\{)',
+                                  r'\1\n            minSdk = 24', content, count=1)
+          else:
+              # Groovy DSL
+              content = re.sub(r'compileSdkVersion\s+flutter\.compileSdkVersion',
+                              'compileSdkVersion 35', content)
+              content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion',
+                              'minSdkVersion 24', content)
+              # Если таких строк нет — добавим
+              if 'compileSdkVersion 35' not in content:
+                  content = re.sub(r'(android\s*\{)',
+                                  r'\1\n    compileSdkVersion 35', content, count=1)
+              if 'minSdkVersion 24' not in content:
+                  content = re.sub(r'(defaultConfig\s*\{)',
+                                  r'\1\n            minSdkVersion 24', content, count=1)
+
+          gradle_file.write_text(content)
+
+          print(f"\n=== Patched {gradle_file} ===")
+          print(content)
+          EOF
 
       - name: Get dependencies
         run: flutter pub get
@@ -59,8 +114,7 @@ jobs:
 
       - name: List built APK
         run: |
-          ls -lh build/app/outputs/flutter-apk/ || true
-          find build -name "*.apk" -exec ls -lh {} \;
+          find build -name "*.apk" -exec ls -lh {} \; || true
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
