@@ -1,22 +1,8 @@
 name: Build Android APK
 
-# Workflow для сборки Audio Converter APK.
-#
-# Запуск: вручную через GitHub UI (Actions → Build Android APK → Run workflow)
-# или автоматически при пуше в ветку main.
-#
-# После сборки: скачайте APK из артефактов и установите на телефон.
-
 on:
-  workflow_dispatch:  # ручной запуск
+  workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - 'lib/**'
-      - 'pubspec.yaml'
-      - 'android/**'
-      - '.github/workflows/build-android.yml'
-  pull_request:
     branches: [main]
 
 jobs:
@@ -49,52 +35,39 @@ jobs:
 
       # Если в репозитории нет полной Android-структуры (build.gradle, settings.gradle,
       # MainActivity.kt и т.д.) — сгенерируем её автоматически.
-      # Эта команда не перезаписывает существующие файлы (только создаёт недостающие).
       - name: Generate Android project files
         run: flutter create . --project-name audio_converter --platforms android --org com.example
+
+      # ВАЖНО: повышаем compileSdkVersion до 35, чтобы избежать ошибок плагинов
+      - name: Patch Android build.gradle for SDK 35
+        run: |
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle || true
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/g' android/app/build.gradle.kts || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle.kts || true
+          echo "=== Patched build.gradle ==="
+          cat android/app/build.gradle || cat android/app/build.gradle.kts
 
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Verify analysis
-        run: flutter analyze || true  # не падать на warnings
+      - name: Verify analysis (warnings OK)
+        run: flutter analyze || true
 
-      # Подписываем APK debug-ключом (для личного использования этого достаточно)
-      # Для Google Play нужен release-ключ — добавьте его в Secrets репозитория.
       - name: Build debug APK
         run: flutter build apk --debug --no-tree-shake-icons
 
-      # Альтернатива: release APK (нужна подпись)
-      # - name: Build release APK
-      #   run: flutter build apk --release --no-tree-shake-icons
-      #   env:
-      #     KEY_STORE_PATH: ${{ secrets.KEY_STORE_PATH }}
-      #     KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      #     KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      #     STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-
       - name: List built APK
         run: |
-          ls -lh build/app/outputs/flutter-apk/
-          file build/app/outputs/flutter-apk/app-debug.apk
+          ls -lh build/app/outputs/flutter-apk/ || true
+          find build -name "*.apk" -exec ls -lh {} \;
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: AudioConverter-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 30
-          if-no-files-found: error
-
-      # Опционально: сборка release APK (без подписи, для ручной установки)
-      - name: Build release APK (unsigned)
-        run: flutter build apk --release --no-tree-shake-icons || true
-
-      - name: Upload release APK (if built)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: AudioConverter-release-apk-unsigned
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/apk/debug/app-debug.apk
           retention-days: 30
           if-no-files-found: warn

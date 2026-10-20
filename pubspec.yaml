@@ -22,10 +22,6 @@ dependencies:
   permission_handler: ^11.1.0
   # Иконки Material
   cupertino_icons: ^1.0.6
-  # Сохранение сконвертированных файлов в галерею
-  gal: ^2.1.3
-  # Открытие системного файлового менеджера
-  open_file: ^3.3.2
 
 dev_dependencies:
   flutter_test:
