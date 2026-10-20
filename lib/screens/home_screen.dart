@@ -375,10 +375,42 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _addFiles(List<String> paths) async {
-    final outputDir = await getApplicationDocumentsDirectory();
-    final outputsPath = Directory('${outputDir.path}/converted');
-    if (!await outputsPath.exists()) {
-      await outputsPath.create(recursive: true);
+    // Сохраняем в общедоступную папку Downloads/AudioConverter/
+    // которая видна из любого файлового менеджера и музыкального плеера.
+    // На Android: /storage/emulated/0/Download/AudioConverter/
+    final outputDirPath = '/storage/emulated/0/Download/AudioConverter';
+    final outputsPath = Directory(outputDirPath);
+    try {
+      if (!await outputsPath.exists()) {
+        await outputsPath.create(recursive: true);
+      }
+    } catch (e) {
+      // Fallback на documents directory, если нет доступа к Downloads
+      final fallback = await getApplicationDocumentsDirectory();
+      final fallbackPath = Directory('${fallback.path}/converted');
+      if (!await fallbackPath.exists()) {
+        await fallbackPath.create(recursive: true);
+      }
+      // Используем fallback для всех файлов
+      setState(() {
+        for (final path in paths) {
+          final file = File(path);
+          final name = p.basenameWithoutExtension(path);
+          final ext = _selectedFormat.extension;
+          final outputPath = '${fallbackPath.path}/$name.$ext';
+          _tasks.add(ConvertTask(
+            inputPath: path,
+            inputName: p.basename(path),
+            inputSize: file.existsSync() ? file.lengthSync() : 0,
+            outputPath: outputPath,
+            format: _selectedFormat,
+            bitrate: _selectedBitrate,
+            normalize: _normalize,
+            preserveMetadata: _preserveMetadata,
+          ));
+        }
+      });
+      return;
     }
 
     setState(() {
@@ -447,13 +479,87 @@ class _HomeScreenState extends State<HomeScreen> {
     final failed = _tasks.where((t) => t.status == TaskStatus.error).length;
     final cancelled = _tasks.where((t) => t.status == TaskStatus.cancelled).isNotEmpty;
 
+    String message;
     if (cancelled) {
-      _showSnackBar('Отменено. Успешно: $success');
+      message = 'Отменено. Успешно: $success';
     } else if (failed > 0) {
-      _showSnackBar('Готово. Успешно: $success, ошибок: $failed');
+      message = 'Готово. Успешно: $success, ошибок: $failed';
     } else {
-      _showSnackBar('✓ Готово! Сконвертировано: $success');
+      message = '✓ Готово! Сконвертировано: $success';
     }
+
+    // Показываем SnackBar с кнопкой "Открыть папку" только если есть успехи
+    if (success > 0) {
+      _showResultSnackBar(message);
+    } else {
+      _showSnackBar(message);
+    }
+  }
+
+  void _showResultSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(
+          label: 'Открыть папку',
+          onPressed: _openOutputFolder,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openOutputFolder() async {
+    try {
+      final dir = Directory('/storage/emulated/0/Download/AudioConverter');
+      if (await dir.exists()) {
+        // Открываем через системный файловый менеджер
+        // Используем intent через MethodChannel (упрощённо — просто показать путь)
+        _showOutputDialog();
+      } else {
+        _showSnackBar('Папка ещё не создана');
+      }
+    } catch (e) {
+      _showSnackBar('Ошибка: $e');
+    }
+  }
+
+  void _showOutputDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('📁 Где найти файлы'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Сконвертированные файлы сохранены в:'),
+            SizedBox(height: 12),
+            Text(
+              'Download/AudioConverter/',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            ),
+            SizedBox(height: 12),
+            Text('Откройте любой файловый менеджер:'),
+            SizedBox(height: 4),
+            Text('• Мои файлы / Files'),
+            Text('• Google Files'),
+            Text('• Solid Explorer'),
+            SizedBox(height: 12),
+            Text(
+              'Папка находится во внутренней памяти → Download → AudioConverter',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _cancelConversion() {
