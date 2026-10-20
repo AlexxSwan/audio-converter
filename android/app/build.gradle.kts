@@ -9,10 +9,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Получаем версию Flutter из local.properties (до блока android)
-val flutterVersionCode: String by project
-val flutterVersionName: String by project
-
 android {
     namespace = "com.example.audio_converter"
     compileSdk = 35  // ЯВНО указано 35 — требует ffmpeg_kit_flutter_new
@@ -31,8 +27,9 @@ android {
         applicationId = "com.example.audio_converter"
         minSdk = 24  // ЯВНО указано 24 — требует ffmpeg_kit_flutter_new
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutterVersionCode.toInt()
-        versionName = flutterVersionName
+        // Захардкожено — не зависим от local.properties (которого нет на CI)
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     buildTypes {
