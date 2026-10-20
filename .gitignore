@@ -8,11 +8,9 @@ build/
 .pub-cache/
 .pub-lock
 
-# Android
+# Android — компилируемые артефакты (исходники НЕ игнорируем!)
 android/.gradle/
 android/captures/
-android/gradlew
-android/gradlew.bat
 android/local.properties
 android/**/GeneratedPluginRegistrant.java
 android/key.properties
@@ -45,10 +43,6 @@ ios/Runner/GeneratedPluginRegistrant.*
 
 # macOS
 .DS_Store
-
-# Web (если добавите)
-web/icons/
-web/favicon.png
 
 # Лицензии
 **/generated_plugin_registrant.dart
