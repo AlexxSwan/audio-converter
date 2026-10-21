@@ -50,8 +50,8 @@ android {
         applicationId = "com.example.audio_converter"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     buildTypes {

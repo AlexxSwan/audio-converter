@@ -112,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Конвертер аудио в MP3, WAV, M4A, FLAC',
+              'Конвертер аудио в MP3, WAV, M4A, FLAC, OGG, AC3',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -410,7 +410,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ext.endsWith('.m4a') ||
               ext.endsWith('.aac') ||
               ext.endsWith('.ogg') ||
-              ext.endsWith('.opus');
+              ext.endsWith('.opus') ||
+              ext.endsWith('.ac3') ||
+              ext.endsWith('.aiff') ||
+              ext.endsWith('.wma');
         })
         .map((f) => f.path)
         .toList();
@@ -661,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Версия: 1.0.0'),
+            Text('Версия: 1.1.0'),
             SizedBox(height: 6),
             Text(
               'Разработчик: SwanLab',
@@ -676,6 +679,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('• WAV (PCM 16-bit)'),
             Text('• M4A/AAC'),
             Text('• FLAC (без потерь)'),
+            Text('• OGG (Vorbis)'),
+            Text('• AC3 (Dolby Digital)'),
             SizedBox(height: 16),
             Text(
               'Построено на Flutter + ffmpeg_kit.',

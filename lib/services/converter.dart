@@ -64,6 +64,19 @@ class ConverterService {
       case AudioFormat.m4a:
         buf.write('-c:a aac -b:a ${task.bitrate}k ');
         break;
+      case AudioFormat.ogg:
+        // OGG Vorbis - открытый формат, хороший для музыки
+        buf.write('-c:a libvorbis -b:a ${task.bitrate}k ');
+        break;
+      case AudioFormat.ac3:
+        // AC3 (Dolby Digital) - используется в DVD, кино, ТВ
+        // Стандартный битрейт 448k для 5.1, 192k для стерео.
+        // Если пользователь выбрал 448 или меньше - используем его, иначе 448k.
+        final ac3Bitrate = int.tryParse(task.bitrate) != null && int.parse(task.bitrate) <= 640
+            ? task.bitrate
+            : '448';
+        buf.write('-c:a ac3 -b:a ${ac3Bitrate}k ');
+        break;
     }
 
     buf.write('"${task.outputPath}"');

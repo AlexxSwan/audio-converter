@@ -5,7 +5,9 @@ enum AudioFormat {
   mp3('MP3', '🎧', '320 kbps', 'mp3'),
   wav('WAV', '🔊', 'lossless', 'wav'),
   flac('FLAC', '💾', 'без потерь', 'flac'),
-  m4a('M4A/AAC', '📱', '256 kbps', 'm4a');
+  m4a('M4A/AAC', '📱', '256 kbps', 'm4a'),
+  ogg('OGG', '🎼', 'Vorbis 192k', 'ogg'),
+  ac3('AC3', '🎬', 'Dolby 448k', 'ac3');
 
   final String displayName;
   final String icon;
