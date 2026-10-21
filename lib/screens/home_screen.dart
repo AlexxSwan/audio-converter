@@ -176,10 +176,10 @@ class _HomeScreenState extends State<HomeScreen> {
         // Тонкая панель формата сверху
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: Colors.grey.shade50,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: Row(
             children: [
-              Text('Формат: ', style: TextStyle(color: Colors.grey.shade700)),
+              Text('Формат: ', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               DropdownButton<AudioFormat>(
                 value: _selectedFormat,
                 underline: const SizedBox(),
@@ -213,8 +213,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_isConverting)
           Container(
             padding: const EdgeInsets.all(12),
-            color: Colors.orange.shade50,
-            child: Row(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Row
               children: [
                 const SizedBox(
                   width: 20,
@@ -247,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _selectedFormat == AudioFormat.flac;
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.grey.shade100,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -330,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             LinearProgressIndicator(
               value: task.progress / 100.0,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(statusColor),
             ),
           ],
@@ -341,6 +341,20 @@ class _HomeScreenState extends State<HomeScreen> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 11, color: Colors.red),
+            ),
+          ],
+          // Информационное сообщение для "уже существует" (цвет темы, курсив)
+          if (task.status == TaskStatus.done && task.errorMessage != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              task.errorMessage!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.primary,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ],

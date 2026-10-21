@@ -84,6 +84,20 @@ class ConverterService {
       return task;
     }
 
+    // Проверяем, существует ли уже файл в месте назначения.
+    // Если да — НЕ считаем ошибкой, помечаем как "уже существует".
+    try {
+      final existingFile = File(task.outputPath);
+      if (await existingFile.exists()) {
+        final size = await existingFile.length();
+        task.status = TaskStatus.done;
+        task.progress = 100;
+        task.outputSize = size;
+        task.errorMessage = 'Файл уже существует (' + _formatBytes(size) + ') — пропущено';
+        return task;
+      }
+    } catch (_) {}
+
     // Получаем длительность для расчёта прогресса
     final duration = await getDuration(task.inputPath);
 
@@ -136,8 +150,25 @@ class ConverterService {
           final tail = lines.length > 5
               ? lines.skip(lines.length - 5).join('\n')
               : errorText;
+          // Проверим частые случаи — дадим понятное сообщение
+          String friendlyMsg = tail;
+          final lowerErr = errorText.toLowerCase();
+          if (lowerErr.contains('permission denied') || lowerErr.contains('eacces')) {
+            friendlyMsg = 'Нет прав на запись в эту папку';
+          } else if (lowerErr.contains('no space left') || lowerErr.contains('enospc')) {
+            friendlyMsg = 'Недостаточно места на диске';
+          } else if (lowerErr.contains('no such file') || lowerErr.contains('enoent')) {
+            friendlyMsg = 'Исходный файл не найден или перемещён';
+          } else if (lowerErr.contains('invalid argument') || lowerErr.contains('einval')) {
+            friendlyMsg = 'Неверный аргумент (возможно, неподдерживаемый формат)';
+          } else if (lowerErr.contains('broken pipe') || lowerErr.contains('epipe')) {
+            friendlyMsg = 'Конвертация прервана (broken pipe)';
+          } else if (lowerErr.contains('read-only')) {
+            friendlyMsg = 'Папка назначения только для чтения';
+          }
+
           task.status = TaskStatus.error;
-          task.errorMessage = tail.isNotEmpty ? tail : 'Неизвестная ошибка ffmpeg';
+          task.errorMessage = friendlyMsg.isNotEmpty ? friendlyMsg : 'Неизвестная ошибка ffmpeg';
         }
         completer.complete(task);
       },
@@ -168,6 +199,15 @@ class ConverterService {
     }
 
     return completer.future;
+  }
+}
+
+  /// Форматирование размера в человекочитаемый вид
+  static String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes Б';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} КБ';
+    if (bytes < 1024 * 1024 * 1024) return '${(bytes / 1024 / 1024).toStringAsFixed(1)} МБ';
+    return '${(bytes / 1024 / 1024 / 1024).toStringAsFixed(1)} ГБ';
   }
 }
 

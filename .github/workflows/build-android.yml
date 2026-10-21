@@ -40,6 +40,7 @@ jobs:
         run: flutter analyze || true
 
       # ─── Проверяем, есть ли секреты ─────────────────────────────────────
+      # Шаг создаёт output 'has_keystore', который используется в условиях ниже
       - name: Check if keystore secret is set
         id: check_keystore
         env:
