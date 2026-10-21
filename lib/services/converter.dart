@@ -200,8 +200,6 @@ class ConverterService {
 
     return completer.future;
   }
-}
-
   /// Форматирование размера в человекочитаемый вид
   static String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes Б';

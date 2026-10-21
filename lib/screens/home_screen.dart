@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            child: Row
+            child: Row(
               children: [
                 const SizedBox(
                   width: 20,
