@@ -126,13 +126,15 @@ class _HomeScreenState extends State<HomeScreen> {
               alignment: WrapAlignment.center,
               children: AudioFormat.values.map((f) {
                 final selected = f == _selectedFormat;
+                final cs = Theme.of(context).colorScheme;
                 return ChoiceChip(
                   label: Text('${f.icon} ${f.displayName}'),
                   selected: selected,
                   onSelected: (_) => setState(() => _selectedFormat = f),
-                  selectedColor: Colors.orange.shade100,
+                  selectedColor: Colors.orange,
+                  backgroundColor: cs.surfaceContainerHighest,
                   labelStyle: TextStyle(
-                    color: selected ? Colors.orange.shade900 : Colors.black87,
+                    color: selected ? Colors.white : cs.onSurface,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                 );
@@ -256,11 +258,17 @@ class _HomeScreenState extends State<HomeScreen> {
               spacing: 8,
               children: ['64', '96', '128', '192', '256', '320', 'V0'].map((b) {
                 final selected = b == _selectedBitrate;
+                final cs = Theme.of(context).colorScheme;
                 return ChoiceChip(
                   label: Text(b == 'V0' ? 'VBR V0' : '$b kbps'),
                   selected: selected,
                   onSelected: (_) => setState(() => _selectedBitrate = b),
-                  selectedColor: Colors.orange.shade100,
+                  selectedColor: Colors.orange,
+                  backgroundColor: cs.surfaceContainerHighest,
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : cs.onSurface,
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                  ),
                 );
               }).toList(),
             ),
