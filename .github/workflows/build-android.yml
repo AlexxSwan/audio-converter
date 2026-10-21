@@ -33,59 +33,43 @@ jobs:
           flutter --version
           dart --version
 
-      - name: Show android/app/build.gradle.kts
-        run: |
-          echo "=== android/app/build.gradle.kts ==="
-          cat android/app/build.gradle.kts
-
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Verify analysis (warnings OK)
+      - name: Verify analysis
         run: flutter analyze || true
 
       # ─── Декодирование keystore из GitHub Secrets ──────────────────────
-      # Если секреты не заданы — пропускаем подпись (используется debug fallback)
+      # Используем secrets.KESTORE_BASE64 напрямую в условии (env в if не работает)
       - name: Decode keystore from secrets
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
           echo "Keystore decoded:"
           ls -lh android/app/upload-keystore.jks
+          file android/app/upload-keystore.jks
 
-      # Создаём key.properties из секретов
       - name: Create key.properties
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: |
           cat > android/key.properties << PROP
-          storePassword=$KEYSTORE_PASSWORD
-          keyPassword=$KEY_PASSWORD
-          keyAlias=$KEY_ALIAS
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
           storeFile=upload-keystore.jks
           PROP
           echo "key.properties created:"
           cat android/key.properties
 
       # ─── Сборка APK ─────────────────────────────────────────────────────
-      # Если keystore есть — release APK (подписан, можно обновлять)
-      # Если нет — debug APK (подписан debug-ключом, обновлять нельзя)
+      # Если keystore есть — release APK (подписан вашим ключом)
+      # Если нет — debug APK (fallback)
       - name: Build release APK (split per ABI, signed)
-        if: ${{ env.KEYSTORE_BASE64 != '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: flutter build apk --release --no-tree-shake-icons --split-per-abi
 
       - name: Build debug APK (split per ABI, unsigned fallback)
-        if: ${{ env.KEYSTORE_BASE64 == '' }}
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
         run: flutter build apk --debug --no-tree-shake-icons --split-per-abi
 
       - name: List built APKs
@@ -93,29 +77,32 @@ jobs:
           find build -name "*.apk" -exec ls -lh {} \; || true
 
       # ─── Загрузка артефактов ────────────────────────────────────────────
-      # arm64-v8a — для всех современных телефонов (99% устройств, 2020+)
       - name: Upload arm64 APK
         uses: actions/upload-artifact@v4
         with:
           name: AudioConverter-arm64-v8a
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-*.apk
+          path: |
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           retention-days: 30
           if-no-files-found: warn
 
-      # armeabi-v7a — для старых телефонов (2017-2020)
       - name: Upload arm APK
         uses: actions/upload-artifact@v4
         with:
           name: AudioConverter-armeabi-v7a
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-*.apk
+          path: |
+            build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            build/app/outputs/flutter-apk/app-armeabi-v7a-debug.apk
           retention-days: 30
           if-no-files-found: warn
 
-      # x86_64 — для эмуляторов и Chromebook
       - name: Upload x64 APK
         uses: actions/upload-artifact@v4
         with:
           name: AudioConverter-x86_64
-          path: build/app/outputs/flutter-apk/app-x86_64-*.apk
+          path: |
+            build/app/outputs/flutter-apk/app-x86_64-release.apk
+            build/app/outputs/flutter-apk/app-x86_64-debug.apk
           retention-days: 30
           if-no-files-found: warn
