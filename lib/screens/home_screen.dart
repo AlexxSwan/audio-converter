@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../main.dart';
 import '../models/task.dart';
 import '../services/converter.dart';
 
@@ -41,6 +42,30 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
             icon: const Icon(Icons.tune),
             tooltip: 'Пресеты',
+          ),
+          // Кнопка выбора темы
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              ThemeMode mode;
+              switch (value) {
+                case 'light':
+                  mode = ThemeMode.light;
+                  break;
+                case 'dark':
+                  mode = ThemeMode.dark;
+                  break;
+                default:
+                  mode = ThemeMode.system;
+              }
+              AudioConverterApp.of(context)?.setThemeMode(mode);
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'system', child: Text('🌗 Системная')),
+              const PopupMenuItem(value: 'light', child: Text('☀️ Светлая')),
+              const PopupMenuItem(value: 'dark', child: Text('🌙 Тёмная')),
+            ],
+            icon: const Icon(Icons.palette),
+            tooltip: 'Тема оформления',
           ),
           IconButton(
             icon: const Icon(Icons.info_outline),
@@ -603,23 +628,42 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('🎵 Audio Converter'),
+        title: const Row(
+          children: [
+            Text('🎵', style: TextStyle(fontSize: 28)),
+            SizedBox(width: 12),
+            Text('Audio Converter'),
+          ],
+        ),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Версия: 1.0.0'),
-            SizedBox(height: 12),
+            SizedBox(height: 6),
+            Text(
+              'Разработчик: SwanLab',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+            ),
+            SizedBox(height: 16),
             Text('Конвертер аудио для Android.'),
             SizedBox(height: 8),
             Text('Поддерживаемые форматы:'),
+            SizedBox(height: 4),
             Text('• MP3 (libmp3lame)'),
             Text('• WAV (PCM 16-bit)'),
             Text('• M4A/AAC'),
             Text('• FLAC (без потерь)'),
-            SizedBox(height: 12),
-            Text('Построено на Flutter + ffmpeg_kit.',
-                style: TextStyle(color: Colors.grey, fontSize: 12)),
+            SizedBox(height: 16),
+            Text(
+              'Построено на Flutter + ffmpeg_kit.',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            SizedBox(height: 4),
+            Text(
+              '© 2026 SwanLab',
+              style: TextStyle(color: Colors.grey, fontSize: 11),
+            ),
           ],
         ),
         actions: [
